@@ -6,33 +6,33 @@ local Delaunay = require "delaunay"
 local Kruskals = require "kruskals"
 local Room = require "room"
 local Tiles = require "tiles"
-local tileSize = Tiles.tileSize
 
 local Dungeon = {}
 
-function Dungeon:consts()
+function Dungeon:consts(MapWidth, MapHeight, MaxNumRooms, MinRoomSize, MaxRoomSize)
+	tileSize = Tiles.tileSize
 	local floor = math.floor
-	self.MapWidth, self.MapHeight = 160, 110
+	self.MapWidth, self.MapHeight = MapWidth, MapHeight
 
 	self.RoomPlacementAttempts = 0
-	self.MaxRoomPlacementAttempts = 200
+	self.MaxRoomPlacementAttempts = 300
 
 	self.NumRooms = 0
-	self.MaxNumRooms = 25
-	self.MinRoomSize, self.MaxRoomSize = 6, 11
+	self.MaxNumRooms = MaxNumRooms
+	self.MinRoomSize, self.MaxRoomSize = MinRoomSize, MaxRoomSize
 	self.Failed = false
 
 	self.ExtraEdgesCounter = 0
 	self.MaxExtraEdges = floor(self.MaxNumRooms * .08)
 end
 
-function Dungeon:initialize()
+function Dungeon:initialize(MapWidth, MapHeight, MaxNumRooms, MinRoomSize, MaxRoomSize)
 	self.Map = {}
 	self.Rooms = {}
 	self.Corridors = {}
 	self.Doors = {}
 
-	self:consts()
+	self:consts(MapWidth, MapHeight, MaxNumRooms, MinRoomSize, MaxRoomSize)
 	self:generateDungeon()
 end
 
