@@ -6,6 +6,7 @@ local tileSize = Tiles.tileSize
 local suit = require "suit"
 
 function love.load()
+	love.graphics.setBackgroundColor(20,20,20)
 	Dungeon:initialize(100, 70, 15, 6, 11)
 
 	sliders = {
@@ -34,6 +35,10 @@ function love.load()
 			text = "Tilesize"
 		}
 	}
+
+	displayMST = {text = "Display Minimum Spanning Tree"}
+	displayGraph = {text = "Display Graph"}
+
 	viewOptions = false
 end
 
@@ -59,6 +64,9 @@ function love.update(dt)
 				suit.Label(("%d"):format(v.slider.value), suit.layout:col(50, 20))
 			suit.layout:pop()
 		end
+
+		suit.Checkbox(displayMST, suit.layout:row())
+		suit.Checkbox(displayGraph, suit.layout:row())
 	end
 
 	love.window.setTitle(title .. tostring(love.timer.getFPS()) ..' '.. tostring(collectgarbage("count")))
@@ -67,16 +75,25 @@ end
 function love.draw()
 	Dungeon:draw()
 
+	if displayGraph.checked then
+		Dungeon:drawGraph()
+	end
+
+	if displayMST.checked then
+		Dungeon:drawMST()
+	end
+
+	local w = 280
 	if viewOptions then
 		love.graphics.setColor(0,150,255,230)
-		love.graphics.rectangle("fill", 10, 10, 240, 390)
+		love.graphics.rectangle("fill", 10, 10, w, 480)
 		suit.draw()
 
 		love.graphics.setColor(0,0,0,100)
-		love.graphics.rectangle("fill", 260, 20, 260, 48)
+		love.graphics.rectangle("fill", w + 20, 20, w + 20, 48)
 		love.graphics.setColor(255,255,255,255)
-		love.graphics.print("Press 'O' to toggle the options", 270, 20)
-		love.graphics.print("Press 'R' to generate a new dungeon", 270, 42)
+		love.graphics.print("Press 'O' to toggle the options", w + 30, 20)
+		love.graphics.print("Press 'R' to generate a new dungeon", w + 30, 42)
 	else
 		love.graphics.setColor(0,0,0,100)
 		love.graphics.rectangle("fill", 20, 20, 260, 48)

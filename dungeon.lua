@@ -432,7 +432,7 @@ function Dungeon:draw()
 			elseif self.Map[y][x] == Tiles.Floor then
 				love.graphics.setColor(255,255,255)
 			elseif self.Map[y][x] == Tiles.Corridor then
-				love.graphics.setColor(0,255,0)
+				love.graphics.setColor(122,255,254)
 			elseif self.Map[y][x] == Tiles.HWall then
 				love.graphics.setColor(255,175,0)
 			elseif self.Map[y][x] == Tiles.VWall then
@@ -467,8 +467,6 @@ function Dungeon:draw()
 			mx, my = nil, nil
 		end
 	end
-	-- self:drawGrid()
-	-- self:drawMST()
 end
 
 function Dungeon:drawGrid()
@@ -482,15 +480,24 @@ function Dungeon:drawGrid()
 	end
 end
 
+function Dungeon:drawGraph()
+	for i = 1, #self.Edges do
+		local p1 = self.Edges[i].p1
+		local p2 = self.Edges[i].p2
+		love.graphics.setColor(255,0,255)
+		love.graphics.line(p1.x, p1.y, p2.x, p2.y)
+	end
+end
+
 function Dungeon:drawMST()
 	local alpha = 255
 	for i = 1, #self.MST do
 		local p1 = self.MST[i].p1
 		local p2 = self.MST[i].p2
-		love.graphics.setColor(0,255,0)
-		love.graphics.line(p1.x - 1, p1.y - 1, p2.x - 1, p2.y - 1)
+		love.graphics.setColor(0, 0, 0, alpha)
+		love.graphics.line(p1.x - .5, p1.y - .5, p2.x - .5, p2.y - .5)
 		love.graphics.line(p1.x, p1.y, p2.x, p2.y)
-		love.graphics.line(p1.x + 1, p1.y + 1, p2.x + 1, p2.y + 1)
+		love.graphics.line(p1.x + .5, p1.y + .5, p2.x + .5, p2.y + .5)
 	end
 end
 
