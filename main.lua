@@ -1,14 +1,12 @@
 math.randomseed(os.time())
 math.random();math.random();math.random();
 local Dungeon = require "dungeon"
-local Menu = require "menu"
 local Tiles = require "tiles"
 local tileSize = Tiles.tileSize
 local suit = require "suit"
 
 function love.load()
 	Dungeon:initialize(100, 70, 15, 6, 11)
-	Menu:initialize()
 
 	sliders = {
 		{
