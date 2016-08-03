@@ -6,13 +6,22 @@ local Delaunay = require "delaunay"
 local Kruskals = require "kruskals"
 local Room = require "room"
 local Tiles = require "tiles"
+local Quads = require "quads"
 local tileSize = Tiles.tileSize
 
 local Dungeon = {}
 
+local spritesheet = love.graphics.newImage("cool.png")
+spritesheet:setFilter("nearest", "nearest")
+Dungeon.spritesheet = spritesheet
+Dungeon.tileset = Quads:loadQuads(spritesheet, 1, 10)
+local planks = love.graphics.newImage("planks.png")
+planks:setFilter("nearest", "nearest")
+Dungeon.planks = planks
+
 function Dungeon:consts()
 	local floor = math.floor
-	self.MapWidth, self.MapHeight = 160, 110
+	self.MapWidth, self.MapHeight = 80, 55
 
 	self.RoomPlacementAttempts = 0
 	self.MaxRoomPlacementAttempts = 200
@@ -41,7 +50,6 @@ function Dungeon:generateDungeon()
 	self:generateRooms()
 	self:generateMST()
 	self:generateCorridors()
-	self:generateRoomDropoffs()
 end
 
 function Dungeon:generateMap()
@@ -284,7 +292,8 @@ function Dungeon:generateCorridorPaths(pairedRooms)
 	local grid = Grid(self.Map)
 	local finder = Pathfinder(grid, 'ASTAR', walkable) 
 	finder:setMode('ORTHOGONAL')
-	ceil = math.ceil
+	local ceil = math.ceil
+	local random = math.random
 
 	for i = 1, #pairedRooms do
 		local pr = pairedRooms[i]
@@ -317,14 +326,21 @@ function Dungeon:generateCorridorPaths(pairedRooms)
 			-- Add door from room 2
 			for i=#nodes, 1, -1 do
 				local x, y = nodes[i].x, nodes[i].y
-				if doorCounter == 1 and self.Map[y][x] == Tiles.HWall or self.Map[y][x] == Tiles.VWall then
+				local chance = random(1, 100)
+				if doorCounter == 1 and self.Map[y][x] == Tiles.HWall then
 					self.Map[y][x] = Tiles.Door
+					if chance < 15 then
+						self.Map[y][x] = Tiles.HHiddenDoor
+					end
+					break
+				elseif doorCounter == 1 and self.Map[y][x] == Tiles.VWall then
+					self.Map[y][x] = Tiles.Door
+					if chance < 15 then
+						self.Map[y][x] = Tiles.VHiddenDoor
+					end
 					break
 				end
 			end
-
-			-- Add dropoffs here
-			self:addCorridorDropoffs(nodes)
 
 			doorCounter = nil
 			nodes = nil
@@ -371,53 +387,6 @@ function Dungeon:addCorridorWalls(x, y)
 end
 ]]
 
-local function yCompare(a, b) if a.y < b.y then return a end end
-function Dungeon:addCorridorDropoffs(nodes)
-	-- Sort nodes from smallest y to largest y
-	local sort = table.sort
-	sort(nodes, yCompare)
-
-	for i = 1, #nodes do
-		local node = nodes[i]
-		local x, y = node.x, node.y
-		if self.Map[y][x] == Tiles.Corridor then
-			local dropoff1 = self.Map[y+1][x]
-			local dropoff2 = self.Map[y+2][x]
-			local dropoff3 = self.Map[y+3][x]
-			if dropoff1 == Tiles.Solid or dropoff1 >= Tiles.Dropoff1 then
-				self.Map[y+1][x] = Tiles.Dropoff1
-			end
-			if dropoff2 == Tiles.Solid or dropoff2 >= Tiles.Dropoff1 then
-				self.Map[y+2][x] = Tiles.Dropoff2
-			end
-			if dropoff3 == Tiles.Solid or dropoff3 == Tiles.Pepper then
-				self.Map[y+3][x] = Tiles.Dropoff3
-			end
-		end
-	end
-end
-
-function Dungeon:generateRoomDropoffs()
-	for i = 1, #self.Rooms do
-		local room = self.Rooms[i]
-		local y = room.y + room.h
-		for x = room.x, room.x + room.w do
-			if self.Map[y+1][x] == Tiles.Solid or self.Map[y+1][x] == Tiles.Pepper then
-				self.Map[y+1][x] = Tiles.Dropoff1
-			end
-			if self.Map[y+2][x] == Tiles.Solid or self.Map[y+2][x] == Tiles.Pepper then
-				self.Map[y+2][x] = Tiles.Dropoff2
-			end
-			if self.Map[y+3][x] == Tiles.Solid or self.Map[y+3][x] == Tiles.Pepper then
-				self.Map[y+3][x] = Tiles.Dropoff3
-			end
-			if self.Map[y+4][x] == Tiles.Solid or self.Map[y+4][x] == Tiles.Pepper then
-				self.Map[y+4][x] = Tiles.Dropoff4
-			end
-		end
-	end
-end
-
 function Dungeon:realCoords(x, y)
 	return (x - 1), (y - 1)
 end
@@ -427,42 +396,34 @@ function Dungeon:draw()
 		for x = 1, self.MapWidth do
 			local mx, my = self:realCoords(x, y)
 			-- local mx, my = x, y
+			love.graphics.setColor(255,255,255)
+			local scale = 1
 			if self.Map[y][x] == Tiles.Solid then
 				love.graphics.setColor(255,0,0,45)
 			elseif self.Map[y][x] == Tiles.Floor then
-				love.graphics.setColor(255,255,255)
+				love.graphics.draw(self.spritesheet, self.tileset[1], x*tileSize, y*tileSize, 0, scale, scale)
 			elseif self.Map[y][x] == Tiles.Corridor then
-				love.graphics.setColor(0,255,0)
+				love.graphics.draw(self.planks, x*tileSize, y*tileSize)
 			elseif self.Map[y][x] == Tiles.HWall then
-				love.graphics.setColor(255,175,0)
+				love.graphics.draw(self.spritesheet, self.tileset[4], x*tileSize, y*tileSize)
 			elseif self.Map[y][x] == Tiles.VWall then
-				love.graphics.setColor(175,255,0)
+				love.graphics.draw(self.spritesheet, self.tileset[10], x*tileSize, y*tileSize)
 			elseif self.Map[y][x] == Tiles.TLWall then
-				love.graphics.setColor(0,0,255)
+				love.graphics.draw(self.spritesheet, self.tileset[2], x*tileSize, y*tileSize)
 			elseif self.Map[y][x] == Tiles.TRWall then
-				love.graphics.setColor(0,255,255)
+				love.graphics.draw(self.spritesheet, self.tileset[3], x*tileSize, y*tileSize)
 			elseif self.Map[y][x] == Tiles.BLWall then
-				love.graphics.setColor(255,0,255)
+				love.graphics.draw(self.spritesheet, self.tileset[8], x*tileSize, y*tileSize)
 			elseif self.Map[y][x] == Tiles.BRWall then
-				love.graphics.setColor(255,0,0)
+				love.graphics.draw(self.spritesheet, self.tileset[9], x*tileSize, y*tileSize)
 			elseif self.Map[y][x] == Tiles.Door then
-				love.graphics.setColor(0,0,255, 100)
-			elseif self.Map[y][x] == Tiles.CorridorWall then
-				love.graphics.setColor(255,255,0)
-			elseif self.Map[y][x] == Tiles.Dropoff1 then
-				love.graphics.setColor(60,60,60,240)
-			elseif self.Map[y][x] == Tiles.Dropoff2 then
-				love.graphics.setColor(60,60,60,180)
-			elseif self.Map[y][x] == Tiles.Dropoff3 then
-				love.graphics.setColor(60,60,60,120)
-			elseif self.Map[y][x] == Tiles.Dropoff4 then
-				love.graphics.setColor(60,60,60,60)
-			elseif self.Map[y][x] == Tiles.Pepper then
-				-- love.graphics.setColor(0,0,0)
-				love.graphics.setColor(255,0,0,45)
-			end
-			if self.Map[y][x] > Tiles.Solid and self.Map[y][x] < Tiles.Pepper then
-				love.graphics.rectangle("fill", mx * tileSize, my * tileSize, tileSize, tileSize)
+				love.graphics.draw(self.spritesheet, self.tileset[5], x*tileSize, y*tileSize)
+			elseif self.Map[y][x] == Tiles.HHiddenDoor then
+				love.graphics.setColor(255,0,0,255)
+				love.graphics.draw(self.spritesheet, self.tileset[4], x*tileSize, y*tileSize)
+			elseif self.Map[y][x] == Tiles.VHiddenDoor then
+				love.graphics.setColor(255,0,0,255)
+				love.graphics.draw(self.spritesheet, self.tileset[10], x*tileSize, y*tileSize)
 			end
 			mx, my = nil, nil
 		end
