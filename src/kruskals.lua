@@ -1,4 +1,4 @@
-local UnionFind = require "unionfind"
+local UnionFind = require "src.unionfind"
 
 local function Kruskals(V, E)
 	-- Initialize the SetMap and sets tables

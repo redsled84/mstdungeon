@@ -1,7 +1,7 @@
-local Tiles = require "tiles"
+local Tiles = require "src.tiles"
 local tileW, tileH = Tiles.tileSize, Tiles.tileSize
-local class 		= require 'middleclass'
-local Quads 		= class('Quads')
+local class = require 'libs.middleclass'
+local Quads = class('Quads')
 
 function Quads:initialize(x, y, w, h)
 	self.x = x

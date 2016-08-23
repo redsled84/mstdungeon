@@ -1,27 +1,20 @@
 math.randomseed(os.time())
 math.random();math.random();math.random();
-local Dungeon = require "dungeon"
+
+local game = require "game"
+local title = "Organized Dungeon Generator / FPS: "
 
 function love.load()
-	Dungeon:initialize()
+	game.load()
 end
 
-local timer, timerMax = 0, 5
-local title = "Organized Dungeon Generator / FPS: "
 function love.update(dt)
-	timer = timer + dt
-	if timer > timerMax then
-		timer = 0
-		-- collectgarbage("collect")
-		-- print(collectgarbage("count"))
-		-- print(Dungeon.RoomPlacementAttempts)
-	end
-
+	game.update(dt)
 	love.window.setTitle(title .. tostring(love.timer.getFPS()) ..' '.. tostring(collectgarbage("count")))
 end
 
 function love.draw()
-	Dungeon:draw()
+	game.draw()
 end
 
 function love.keypressed(key)
@@ -30,7 +23,7 @@ function love.keypressed(key)
 		quit()
 	end
 	if key == "r" then
-		Dungeon:initialize()
+		game.load()
 	end
 end
 

@@ -1,23 +1,35 @@
-local Grid = require "jumper.grid"
-local Pathfinder = require "jumper.pathfinder"
-local Delaunay = require "delaunay"
+local libd = _G.library_directory
+local sd = _G.source_directory
+
+local Grid = require(libd .. "jumper.grid")
+local Pathfinder = require(libd .. "jumper.pathfinder")
+local Delaunay = require(libd .. "delaunay")
 	local Point = Delaunay.Point
 	local Edge = Delaunay.Edge
-local Kruskals = require "kruskals"
-local Room = require "room"
-local Tiles = require "tiles"
-local Quads = require "quads"
+
+local Kruskals = require(sd .. "kruskals")
+local Room = require(sd .. "room")
+local Tiles = require(sd .. "tiles")
+local Quads = require(sd .. "quads")
 local tileSize = Tiles.tileSize
 
 local Dungeon = {}
 
-local spritesheet = love.graphics.newImage("cool.png")
+local spritesheet = love.graphics.newImage("assets/sprites/cool.png")
 spritesheet:setFilter("nearest", "nearest")
 Dungeon.spritesheet = spritesheet
 Dungeon.tileset = Quads:loadQuads(spritesheet, 1, 10)
-local planks = love.graphics.newImage("planks.png")
+local planks = love.graphics.newImage("assets/sprites/planks.png")
 planks:setFilter("nearest", "nearest")
 Dungeon.planks = planks
+
+local function shallowCopy(t)
+	local temp = {}
+	for k=#t, 1, -1 do
+		temp[k] = t[k]
+	end
+	return temp
+end
 
 function Dungeon:consts()
 	local floor = math.floor
@@ -50,6 +62,7 @@ function Dungeon:generateDungeon()
 	self:generateRooms()
 	self:generateMST()
 	self:generateCorridors()
+	self:generateCorridorWalls()
 end
 
 function Dungeon:generateMap()
@@ -281,6 +294,7 @@ function Dungeon:getRoomFromPoint(point)
 	end
 end
 
+-- Needs some spring cleaning 
 function Dungeon:generateCorridorPaths(pairedRooms)
 	local walkable = function(value) 
 		if value < Tiles.Dropoff1 then
@@ -289,12 +303,15 @@ function Dungeon:generateCorridorPaths(pairedRooms)
 			return false
 		end
 	end
+
 	local grid = Grid(self.Map)
-	local finder = Pathfinder(grid, 'ASTAR', walkable) 
+	local finder = Pathfinder(grid, 'ASTAR', walkable)
 	finder:setMode('ORTHOGONAL')
+
 	local ceil = math.ceil
 	local random = math.random
 
+	local doorCounter = 0
 	for i = 1, #pairedRooms do
 		local pr = pairedRooms[i]
 		-- Get the center positions of the paired rooms
@@ -303,55 +320,80 @@ function Dungeon:generateCorridorPaths(pairedRooms)
 		local x2, y2 = ceil(pr.r2.x + pr.r2.w / 2),
 			ceil(pr.r2.y + pr.r2.h / 2)
 		local Path = finder:getPath(x1, y1, x2, y2)
-		if Path == nil then
-			print(self.map[y1][x1], self.map[y2][x2], 'Door Positions:',
-				tostring(x1), tostring(y1), tostring(x2), tostring(y2))
-		else
-			local doorCounter = 0
-			local nodes = {}
-			for node, count in Path:nodes() do
-				local x, y = node:getX(), node:getY()
-				nodes[#nodes+1] = {x = x, y = y}
-				-- Add door from room 1
-				if doorCounter == 0 and self.Map[y][x] == Tiles.HWall or self.Map[y][x] == Tiles.VWall then
-					self.Map[y][x] = Tiles.Door
-					doorCounter = doorCounter + 1
-				end
 
-				-- Add corridor tile
-				if self.Map[y][x] == Tiles.Solid or self.Map[y][x] == Tiles.CorridorWall then
-					self.Map[y][x] = Tiles.Corridor
-				end
-			end
-			-- Add door from room 2
-			for i=#nodes, 1, -1 do
-				local x, y = nodes[i].x, nodes[i].y
-				local chance = random(1, 100)
-				if doorCounter == 1 and self.Map[y][x] == Tiles.HWall then
-					self.Map[y][x] = Tiles.Door
-					if chance < 15 then
-						self.Map[y][x] = Tiles.HHiddenDoor
-					end
-					break
-				elseif doorCounter == 1 and self.Map[y][x] == Tiles.VWall then
-					self.Map[y][x] = Tiles.Door
-					if chance < 15 then
-						self.Map[y][x] = Tiles.VHiddenDoor
-					end
-					break
-				end
+		
+		local nodes = {}
+		local corridor = {}
+		doorCounter = 0
+
+		for node, count in Path:nodes() do
+			local x, y = node:getX(), node:getY()
+			nodes[#nodes+1] = {x = x, y = y}
+			-- Add door from room 1
+			if doorCounter == 0 and (self.Map[y][x] == Tiles.HWall or self.Map[y][x] == Tiles.VWall) then
+				self.Map[y][x] = Tiles.Door
+				doorCounter = doorCounter + 1
 			end
 
-			doorCounter = nil
-			nodes = nil
+			-- Add corridor tile
+			if self.Map[y][x] == Tiles.Solid or self.Map[y][x] == Tiles.CorridorWall then
+				self.Map[y][x] = Tiles.Corridor
+			end
 		end
+		-- Add door from room 2
+		for i=#nodes, 1, -1 do
+			local x, y = nodes[i].x, nodes[i].y
+			-- Place hidden door or door
+			-- local chance = random(1, 100)
+			-- if doorCounter == 1 and self.Map[y][x] == Tiles.HWall then
+			-- 	self.Map[y][x] = Tiles.Door
+
+			-- 	-- add horizontal hidden door
+			-- 	if chance < 15 then
+			-- 		self.Map[y][x] = Tiles.HHiddenDoor
+			-- 		doorCounter = doorCounter + 1
+			-- 	end
+
+			-- 	doorCounter = doorCounter + 1
+			-- elseif doorCounter == 1 and self.Map[y][x] == Tiles.VWall then
+			-- 	self.Map[y][x] = Tiles.Door
+
+			-- 	-- add vertical hidden door
+			-- 	if chance < 15 then
+			-- 		self.Map[y][x] = Tiles.VHiddenDoor
+			-- 		doorCounter = doorCounter + 1
+			-- 	end
+
+			-- 	doorCounter = doorCounter + 1
+			-- end
+			if doorCounter == 1 and (self.Map[y][x] == Tiles.HWall or self.Map[y][x] == Tiles.VWall) then
+				self.Map[y][x] = Tiles.Door
+				doorCounter = doorCounter + 1
+			end
+		end
+
+		self.Corridors[#self.Corridors+1] = shallowCopy(nodes)
+		
+		doorCounter = nil
+		nodes = nil
 	end
 
 	grid, finder = nil
 end
 
+function Dungeon:generateCorridorWalls()
+	for i = 1, #self.Corridors do
+		local corridor = self.Corridors[i]
+		for j = 1, #corridor do
+			local node = corridor[j]
+			Dungeon:addCorridorWalls(node.x, node.y)
+		end
+	end
+end
+
 --[[ Adds walls around corridor paths
 -- Implement by calling in generateCorridorPaths, 3nd for loop
+]]
 function Dungeon:addCorridorWalls(x, y)
 	-- horizontal part of corridor
 	if self.Map[y-1][x] == Tiles.Solid or self.Map[y-1][x] == Tiles.Pepper then
@@ -385,7 +427,14 @@ function Dungeon:addCorridorWalls(x, y)
 		self.Map[y-1][x-1] = Tiles.CorridorWall
 	end
 end
-]]
+
+function Dungeon:getRandomRoomPosition()
+	local rn = math.random(1, #self.Rooms)
+	local room = self.Rooms[rn]
+	local x = math.random(room.x + 1, room.x + room.w - 1)
+	local y = math.random(room.y + 1, room.y + room.h - 1)
+	return x * tileSize, y * tileSize
+end
 
 function Dungeon:realCoords(x, y)
 	return (x - 1), (y - 1)
@@ -402,8 +451,12 @@ function Dungeon:draw()
 				love.graphics.setColor(255,0,0,45)
 			elseif self.Map[y][x] == Tiles.Floor then
 				love.graphics.draw(self.spritesheet, self.tileset[1], x*tileSize, y*tileSize, 0, scale, scale)
+				love.graphics.setColor(0,0,0,160)
+				love.graphics.rectangle("fill", x*tileSize, y*tileSize, tileSize, tileSize)
 			elseif self.Map[y][x] == Tiles.Corridor then
 				love.graphics.draw(self.planks, x*tileSize, y*tileSize)
+				-- love.graphics.setColor(255,255,255)
+				-- love.graphics.rectangle("fill", x*tileSize, y*tileSize, tileSize, tileSize)
 			elseif self.Map[y][x] == Tiles.HWall then
 				love.graphics.draw(self.spritesheet, self.tileset[4], x*tileSize, y*tileSize)
 			elseif self.Map[y][x] == Tiles.VWall then
@@ -430,6 +483,7 @@ function Dungeon:draw()
 	end
 	-- self:drawGrid()
 	-- self:drawMST()
+	-- self:drawCorridors()
 end
 
 function Dungeon:drawGrid()
@@ -448,10 +502,21 @@ function Dungeon:drawMST()
 	for i = 1, #self.MST do
 		local p1 = self.MST[i].p1
 		local p2 = self.MST[i].p2
-		love.graphics.setColor(0,255,0)
+		love.graphics.setColor(0,255,0, 100)
 		love.graphics.line(p1.x - 1, p1.y - 1, p2.x - 1, p2.y - 1)
 		love.graphics.line(p1.x, p1.y, p2.x, p2.y)
 		love.graphics.line(p1.x + 1, p1.y + 1, p2.x + 1, p2.y + 1)
+	end
+end
+
+function Dungeon:drawCorridors()
+	for i = 1, #self.Corridors do
+		local corridor = self.Corridors[i]
+		for j = 1, #corridor do
+			local node = corridor[j]
+			love.graphics.setColor(0,255,0, 100)
+			love.graphics.rectangle("fill", node.x*tileSize, node.y*tileSize, tileSize, tileSize)
+		end
 	end
 end
 
