@@ -25,8 +25,10 @@ function love.keypressed(key)
 	if key == "r" then
 		game.load()
 	end
+
+	game.keypressed(key)
 end
 
-function love.mousepressed(x, y, button)
-
+function love.keyreleased(key)
+	game.keyreleased(key)
 end

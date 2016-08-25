@@ -39,7 +39,8 @@ function Dungeon:consts()
 	self.MaxRoomPlacementAttempts = 200
 
 	self.NumRooms = 0
-	self.MaxNumRooms = 25
+	self.MaxNumRooms = 8
+	self.MinNumChests, self.MaxNumChests = 1, 3
 	self.MinRoomSize, self.MaxRoomSize = 6, 11
 	self.Failed = false
 
@@ -52,6 +53,7 @@ function Dungeon:initialize()
 	self.Rooms = {}
 	self.Corridors = {}
 	self.Doors = {}
+	self.Chests = {}
 
 	self:consts()
 	self:generateDungeon()
@@ -63,6 +65,7 @@ function Dungeon:generateDungeon()
 	self:generateMST()
 	self:generateCorridors()
 	self:generateCorridorWalls()
+	self:generateChests()
 end
 
 function Dungeon:generateMap()
@@ -391,6 +394,11 @@ function Dungeon:generateCorridorWalls()
 	end
 end
 
+function Dungeon:generateChests()
+	local random = math.random
+	local nchests = random(self.MinNumChests, self.MaxNumChests)
+end
+
 --[[ Adds walls around corridor paths
 -- Implement by calling in generateCorridorPaths, 3nd for loop
 ]]
@@ -429,10 +437,11 @@ function Dungeon:addCorridorWalls(x, y)
 end
 
 function Dungeon:getRandomRoomPosition()
-	local rn = math.random(1, #self.Rooms)
+	local random = math.random
+	local rn = random(1, #self.Rooms)
 	local room = self.Rooms[rn]
-	local x = math.random(room.x + 1, room.x + room.w - 1)
-	local y = math.random(room.y + 1, room.y + room.h - 1)
+	local x = random(room.x + 1, room.x + room.w - 1)
+	local y = random(room.y + 1, room.y + room.h - 1)
 	return x * tileSize, y * tileSize
 end
 
